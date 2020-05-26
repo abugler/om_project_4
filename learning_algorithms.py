@@ -7,9 +7,9 @@ class OnlineLearning:
     def calculate_regret(payoffs, actions):
         """
         Calculates OPT, then reports regret
-        :param payoffs: 2-D k x n numpy array, where the value payoffs[k, n]
-                is the payoff at round n with action k
-        :param actions: 1-D numpy array of length n where actions[i] is the action
+        :param payoffs: 2-D k x rounds numpy array, where the value payoffs[k, rounds]
+                is the payoff at round rounds with action k
+        :param actions: 1-D numpy array of length rounds where actions[i] is the action
                 taken by the learning algorithm at round i
         :return regret: Value of regret
         """
@@ -30,7 +30,7 @@ class OnlineLearning:
         :param n: Number of rounds to generate
         :param action_probabilities: 1-D ndarray, where action_probabilities[i]
             is the probability that payoffs[i, j] would be 1
-        :return payoffs: 2-D n x k ndarray where payoffs[i, j] is the payoff
+        :return payoffs: 2-D rounds x k ndarray where payoffs[i, j] is the payoff
             at action i and round j
         """
         payoffs = [
@@ -74,9 +74,9 @@ class OnlineLearning:
 
         """
         Runs Online Learning algorithm on the given payoffs
-        :param payoffs: 2-D k x n numpy array, where the value payoffs[k, n]
-            is the payoff at round n with action k
-        :return actions: 1-D numpy array of length n where actions[i] is the action
+        :param payoffs: 2-D k x rounds numpy array, where the value payoffs[k, rounds]
+            is the payoff at round rounds with action k
+        :return actions: 1-D numpy array of length rounds where actions[i] is the action
             taken by the learning algorithm at round i
         """
 
@@ -94,8 +94,8 @@ class OnlineLearning:
         """
         Runs algorithm on payoffs, then reports actions and regret.
         Also prints results
-        :param payoffs: 2-D k x n numpy array, where the value payoffs[k, n]
-            is the payoff at round n with action k
+        :param payoffs: 2-D k x rounds numpy array, where the value payoffs[k, rounds]
+            is the payoff at round rounds with action k
         :return regret: Regret of algorithm
         """
         actions = self.run(payoffs)
@@ -115,7 +115,7 @@ class ExponentialWeights(OnlineLearning):
         payoffs_copy = cumulative_payoffs.copy()
         inf = float("inf")
         sum_probabilities = inf
-        # Possible overflow with large values of n
+        # Possible overflow with large values of rounds
         while sum_probabilities == inf:
             probabilities = np.array([(1 + self.learning_rate) ** (payoff - 1 / h)
                                       for payoff in payoffs_copy])
