@@ -32,7 +32,7 @@ class OnlineReserve:
 
     def run_auctions(self, bids, n=2):
         """
-        Performs second price auction rounds times.
+        Performs nth price auction rounds times.
 
         :param bids: ndarray of size m x rounds of bids between 0 and h, where m is the
             number of bidders, and rounds is the number of bids.
@@ -41,6 +41,8 @@ class OnlineReserve:
         :return prices: ndarray of size rounds. Reserve price for each round
         :return regret: Regret compared to OPT
         """
+        if bids.shape[0] < n:
+            raise ValueError("n should be less than the number of bidders")
         revenue = np.empty((self.reserve_prices.shape[0], bids.shape[1]))
         n_gen = OnlineReserve._n_generator(n)
         for j in range(bids.shape[1]):
