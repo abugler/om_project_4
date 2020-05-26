@@ -20,34 +20,53 @@ class OnlineReserve:
         # If we wanted to, we could add FTPL, but I don't see a reason to.
         self.learning_algorithm = ExponentialWeights(learning_rate, max_payoff=h)
 
-    def run_auctions(self, bids):
-        """
-        Performs second price auction n times.
+    @staticmethod
+    def _n_generator(n):
+        if isinstance(n, int):
+            return lambda: n
+        elif isinstance(n, np.ndarray):
+            return lambda: random.choice(n)
+        else:
+            raise ValueError("n must be either int or ndarray")
 
-        :param bids: ndarray of size m x n of bids between 0 and h, where m is the
-            number of bidders, and n is the number of bids.
-        :return prices: ndarray of size n. Reserve price for each round
+
+    def run_auctions(self, bids, n=2):
+        """
+        Performs second price auction rounds times.
+
+        :param bids: ndarray of size m x rounds of bids between 0 and h, where m is the
+            number of bidders, and rounds is the number of bids.
+        :param n: Number of items to sell in an nth price auction. If num_bids is a ndarray, the
+            number of items to sell is uniformly randomly chosen from num_bids.
+        :return prices: ndarray of size rounds. Reserve price for each round
         :return regret: Regret compared to OPT
         """
         revenue = np.empty((self.reserve_prices.shape[0], bids.shape[1]))
-        for i in range(self.reserve_prices.shape[0]):
-            price = self.reserve_prices[i]
-            for j in range(bids.shape[1]):
-                max_bid, second_max_bid = heapq.nlargest(2, bids[:, j])
-                revenue[i, j] = max(second_max_bid, price) if max_bid >= price else 0
+        n_gen = OnlineReserve._n_generator(n)
+        for j in range(bids.shape[1]):
+            n_largest_bids = heapq.nlargest(n_gen(), bids[:, j])
+            for i in range(self.reserve_prices.shape[0]):
+                reserve_price = self.reserve_prices[i]
+                sell_price = max(n_largest_bids[-1], reserve_price)
+                # Note: By definition, if b is above sell_price,
+                # Then b is in the n_largest_bids
+                revenue[i, j] = sum([sell_price if b > sell_price else 0 for b in n_largest_bids])
 
         actions, regret = self.learning_algorithm.experiment(revenue, _print=False)
         prices = self.reserve_prices[actions]
-        return prices, regret
+        revenue = np.array(
+            [revenue[action, i] for i, action in enumerate(actions)]
+        )
+        return prices, revenue, regret
 
 if __name__ == "__main__":
     random.seed(0)
     # draw from uniform distribution from 0-1
-    n = 100
+    rounds = 100
     bidders = 2
-    bids = random.rand(bidders, n)
-    reserve = OnlineReserve(.5, 10)
-    prices, regret = reserve.run_auctions(bids)
+    bids = random.rand(bidders, rounds)
+    reserve = OnlineReserve(.6, 111)
+    prices, _, regret = reserve.run_auctions(bids)
     print("##### Prices #####")
     print(prices)
     print(f"Regret: {regret}")
