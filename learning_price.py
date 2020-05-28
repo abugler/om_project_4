@@ -43,11 +43,15 @@ class OnlineReserve:
         """
         if bids.shape[0] < n:
             raise ValueError("n should be less than the number of bidders")
+
         revenue = np.empty((self.reserve_prices.shape[0], bids.shape[1]))
         n_gen = OnlineReserve._n_generator(n)
+
         for j in range(bids.shape[1]):
             n_largest_bids = heapq.nlargest(n_gen(), bids[:, j])
+
             for i in range(self.reserve_prices.shape[0]):
+
                 reserve_price = self.reserve_prices[i]
                 sell_price = max(n_largest_bids[-1], reserve_price)
                 # Note: By definition, if b is above sell_price,
@@ -61,6 +65,49 @@ class OnlineReserve:
         )
         return prices, revenue, regret
 
+class OnlineExchange:
+
+    def __init__(self, learning_rate, k, h=1):
+        """
+        :param k: Number of discretized prices
+        :param h: Maximum bid
+        :param learning_rate: Learning Rate of learning algorithm
+        """
+        
+        self.prices = np.linspace(0, h, num=k)
+        self.h = h
+        self.learning_algorithm = ExponentialWeights(learning_rate, max_payoff=h)
+
+    def run_auctions(self, bids, n=2):
+
+        #generate uniform value of buyer and seller
+        #generate random price to exchange at
+        #calculate payoff and opt
+        #learn
+
+        if bids.shape[0] < n:
+            raise ValueError("n should be less than the number of bidders")
+
+        revenue = np.empty((self.prices.shape[0], bids.shape[1]))
+        for j in range(bids.shape[1]):
+
+            sell_value, buy_value = bids[0][j], bids[1][j]
+            for i in range(self.prices.shape[0]):
+
+                price = self.prices[i]
+                #revenue is price, otherwise it's 0 if buyer < seller or price out of range.
+                revenue[i, j] = price if sell_value < price < buy_value else 0
+
+        actions, regret = self.learning_algorithm.experiment(revenue, _print=False)
+        result_prices = self.prices[actions]
+        revenue = np.array(
+            [revenue[action, i] for i, action in enumerate(actions)]
+        )
+        return result_prices, revenue, regret
+        
+            
+
+
 if __name__ == "__main__":
     random.seed(0)
     # draw from uniform distribution from 0-1
@@ -69,6 +116,14 @@ if __name__ == "__main__":
     bids = random.rand(bidders, rounds)
     reserve = OnlineReserve(.6, 111)
     prices, _, regret = reserve.run_auctions(bids)
+    print("##### Prices #####")
+    print(prices)
+    print(f"Regret: {regret}")
+
+
+    buyer_and_seller_values = random.rand(2, 1000)
+    exchange = OnlineExchange(.6, 100)
+    prices, _, regret = exchange.run_auctions(buyer_and_seller_values)
     print("##### Prices #####")
     print(prices)
     print(f"Regret: {regret}")
