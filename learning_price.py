@@ -80,10 +80,8 @@ class OnlineExchange:
 
     def run_auctions(self, bids, n=2):
 
-        #generate uniform value of buyer and seller
-        #generate random price to exchange at
-        #calculate payoff and opt
-        #learn
+        #bids[0] reprsent the values of the buyer, bids[1] represent the values of the seller
+        #prices represent the trade between
 
         if bids.shape[0] < n:
             raise ValueError("n should be less than the number of bidders")
@@ -104,6 +102,63 @@ class OnlineExchange:
             [revenue[action, i] for i, action in enumerate(actions)]
         )
         return result_prices, revenue, regret
+
+class OnlineMarketMaker:
+
+    def __init__(self, learning_rate, k, h=1):
+
+        self.prices = np.linspace(0, h, num=k)
+        #for every price, one leg of the spread is the median price to one of the bounds (0 or h)
+        self.spreads = np.array([np.linspace(0, min(h-price, price-0), num=k) for price in self.prices])
+        self.h = h
+        self.learning_algorithm = ExponentialWeights(learning_rate, max_payoff=h)
+
+    def run_auctions(self, bids, n=2):
+
+        if bids.shape[0] < n:
+            raise ValueError("n should be less than the number of bidders")
+
+        revenue = np.empty((self.prices.shape[0], self.spreads.shape[0],  bids.shape[1]))
+
+        for j in range(bids.shape[1]):
+
+            seller_value, buyer_value = bids[0][j], bids[1][j]
+
+            for i in range(self.prices.shape[0]):
+
+                median_price = self.prices[i]
+
+                for k in range(self.spreads.shape[0]):
+                    spread = self.spreads[i][k]
+                    market_maker_sell, market_maker_buy = median_price + spread, median_price - spread
+
+                    #increases potential revenue by increasing spread, but decreases chance of getting the trade
+
+                    #if you sell to the buyer, the "revenue" that you gain is the value that you sold to the buyer - the value that you think it is.
+                    sell_value = market_maker_sell - median_price if market_maker_sell < buyer_value else 0
+                    #if you buy from the seller, the "revenue" that you gain the value that you think it is - the value that you bought from the seller.
+                    buy_value = median_price - market_maker_buy if market_maker_buy > seller_value else 0
+                    revenue[i, k, j] = sell_value + buy_value 
+                    # if abs(buy_value - sell_value) < spread*2 else 0
+
+                    #add something to allow buyer and seller to interact?
+
+        #have to flatten revenue 3d array. Each action represents one price and one spread.
+        #currently, revenue is in shape, (discretized price, discretized spreads,  number of rounds). We want (spreads * price, rounds)
+
+        revenue = revenue.reshape(-1, revenue.shape[-1])
+        actions, regret = self.learning_algorithm.experiment(revenue, _print=False)
+        
+        # #unflatten
+        result_price_spread = [(self.prices[action//self.prices.shape[0]],self.spreads[action//self.prices.shape[0]][action%self.spreads.shape[0]]) for action in actions]
+        
+
+        revenue = np.array(
+            [revenue[action, i] for i, action in enumerate(actions)]
+        )
+        return result_price_spread, revenue, regret
+
+
         
             
 
@@ -111,19 +166,27 @@ class OnlineExchange:
 if __name__ == "__main__":
     random.seed(0)
     # draw from uniform distribution from 0-1
-    rounds = 100
-    bidders = 2
-    bids = random.rand(bidders, rounds)
-    reserve = OnlineReserve(.6, 111)
-    prices, _, regret = reserve.run_auctions(bids)
-    print("##### Prices #####")
-    print(prices)
-    print(f"Regret: {regret}")
+    # rounds = 1000
+    # bidders = 2
+    # bids = random.rand(bidders, rounds)
+    # reserve = OnlineReserve(.6, 111)
+    # prices, _, regret = reserve.run_auctions(bids)
+    # print("##### Prices #####")
+    # print(prices)
+    # print(f"Regret: {regret}")
 
+
+    # buyer_and_seller_values = random.rand(2, 1000)
+    # exchange = OnlineExchange(.6, 100)
+    # prices, _, regret = exchange.run_auctions(buyer_and_seller_values)
+    # print("##### Prices #####")
+    # print(prices)
+    # print(f"Regret: {regret}")
 
     buyer_and_seller_values = random.rand(2, 1000)
-    exchange = OnlineExchange(.6, 100)
-    prices, _, regret = exchange.run_auctions(buyer_and_seller_values)
-    print("##### Prices #####")
-    print(prices)
-    print(f"Regret: {regret}")
+    # print(buyer_and_seller_values)
+    market_maker = OnlineMarketMaker(.6, 5)
+    market_maker.run_auctions(buyer_and_seller_values)
+
+    # print(buyer_and_seller_values)
+
